@@ -50,6 +50,30 @@
             border-bottom: 1px solid #eee;
         }
 
+        .container-type-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .container-type-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .container-type-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
         .add-flavor input {
             width: 100%;
             padding: 15px;
@@ -84,6 +108,59 @@
 
         .btn-add:active {
             transform: scale(0.98);
+        }
+
+        .container-section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+
+        .section-header:hover {
+            background: #e9ecef;
+        }
+
+        .section-header.normal {
+            border-left: 4px solid #28a745;
+        }
+
+        .section-header.gastro {
+            border-left: 4px solid #fd7e14;
+        }
+
+        .toggle-icon {
+            font-size: 18px;
+            transition: transform 0.3s;
+        }
+
+        .section-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+        }
+
+        .section-content.expanded {
+            max-height: 2000px;
         }
 
         .flavors-list {
@@ -264,14 +341,37 @@
         </div>
 
         <div class="add-flavor">
+            <div class="container-type-selector">
+                <button class="container-type-btn active" id="normalBtn" onclick="selectContainerType('normal')">📦 Normal</button>
+                <button class="container-type-btn" id="gastroBtn" onclick="selectContainerType('gastro')">🏪 Gastro</button>
+            </div>
             <input type="text" id="flavorInput" placeholder="Enter ice cream flavor..." maxlength="50">
             <button class="btn-add" onclick="addFlavor()">Add Flavor</button>
         </div>
 
         <div class="flavors-list" id="flavorsList">
-            <div class="empty-state">
-                <p>No flavors added yet</p>
-                <p>Add your first ice cream flavor above!</p>
+            <div class="container-section">
+                <div class="section-header normal" onclick="toggleSection('normal')">
+                    <span>📦 Normal Containers</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content expanded" id="normalSection">
+                    <div class="empty-state">
+                        <p>No normal container flavors yet</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="container-section">
+                <div class="section-header gastro" onclick="toggleSection('gastro')">
+                    <span>🏪 Gastro Containers</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content expanded" id="gastroSection">
+                    <div class="empty-state">
+                        <p>No gastro container flavors yet</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -285,18 +385,33 @@
     </div>
 
     <script>
-        let flavors = {};
+        let flavors = {
+            normal: {},
+            gastro: {}
+        };
+        let selectedContainerType = 'normal';
 
         function loadFlavors() {
             const saved = localStorage.getItem('iceInventory');
             if (saved) {
-                flavors = JSON.parse(saved);
+                const data = JSON.parse(saved);
+                if (data.normal || data.gastro) {
+                    flavors = data;
+                } else {
+                    flavors = { normal: data, gastro: {} };
+                }
                 renderFlavors();
             }
         }
 
         function saveFlavors() {
             localStorage.setItem('iceInventory', JSON.stringify(flavors));
+        }
+
+        function selectContainerType(type) {
+            selectedContainerType = type;
+            document.getElementById('normalBtn').classList.toggle('active', type === 'normal');
+            document.getElementById('gastroBtn').classList.toggle('active', type === 'gastro');
         }
 
         function addFlavor() {
@@ -308,66 +423,101 @@
                 return;
             }
 
-            if (flavors.hasOwnProperty(flavor)) {
-                alert('This flavor already exists');
+            if (flavors[selectedContainerType].hasOwnProperty(flavor)) {
+                alert(`This flavor already exists in ${selectedContainerType} containers`);
                 return;
             }
 
-            flavors[flavor] = 0;
+            flavors[selectedContainerType][flavor] = 0;
             input.value = '';
             saveFlavors();
             renderFlavors();
         }
 
-        function deleteFlavor(flavor) {
-            if (confirm(`Delete ${flavor}?`)) {
-                delete flavors[flavor];
+        function deleteFlavor(type, flavor) {
+            if (confirm(`Delete ${flavor} from ${type} containers?`)) {
+                delete flavors[type][flavor];
                 saveFlavors();
                 renderFlavors();
             }
         }
 
-        function updateCount(flavor, change) {
-            flavors[flavor] = Math.max(0, flavors[flavor] + change);
+        function updateCount(type, flavor, change) {
+            flavors[type][flavor] = Math.max(0, flavors[type][flavor] + change);
             saveFlavors();
             renderFlavors();
         }
 
+        function toggleSection(type) {
+            const section = document.getElementById(type + 'Section');
+            const header = section.previousElementSibling;
+            
+            if (section.classList.contains('collapsed')) {
+                section.classList.remove('collapsed');
+                section.classList.add('expanded');
+                header.classList.remove('collapsed');
+            } else {
+                section.classList.remove('expanded');
+                section.classList.add('collapsed');
+                header.classList.add('collapsed');
+            }
+        }
+
         function renderFlavors() {
-            const list = document.getElementById('flavorsList');
-            const flavorNames = Object.keys(flavors).sort();
+            renderContainerType('normal');
+            renderContainerType('gastro');
+        }
+
+        function renderContainerType(type) {
+            const section = document.getElementById(type + 'Section');
+            const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1);
+            const flavorNames = Object.keys(flavors[type]).sort();
 
             if (flavorNames.length === 0) {
-                list.innerHTML = `
+                section.innerHTML = `
                     <div class="empty-state">
-                        <p>No flavors added yet</p>
-                        <p>Add your first ice cream flavor above!</p>
+                        <p>No ${type} container flavors yet</p>
                     </div>
                 `;
                 return;
             }
 
-            list.innerHTML = flavorNames.map(flavor => `
+            section.innerHTML = flavorNames.map(flavor => `
                 <div class="flavor-item">
                     <div class="flavor-header">
                         <span class="flavor-name">${flavor}</span>
-                        <button class="btn-delete" onclick="deleteFlavor('${flavor}')">Delete</button>
+                        <button class="btn-delete" onclick="deleteFlavor('${type}', '${flavor}')">Delete</button>
                     </div>
                     <div class="counter-section">
-                        <button class="counter-btn btn-minus" onclick="updateCount('${flavor}', -1)">−</button>
-                        <span class="count-display">${flavors[flavor]}</span>
-                        <button class="counter-btn btn-plus" onclick="updateCount('${flavor}', 1)">+</button>
+                        <button class="counter-btn btn-minus" onclick="updateCount('${type}', '${flavor}', -1)">−</button>
+                        <span class="count-display">${flavors[type][flavor]}</span>
+                        <button class="counter-btn btn-plus" onclick="updateCount('${type}', '${flavor}', 1)">+</button>
                     </div>
                 </div>
             `).join('');
         }
 
         async function exportInventory() {
-            const exportData = Object.entries(flavors)
+            let exportData = '';
+            
+            const normalItems = Object.entries(flavors.normal)
                 .filter(([_, count]) => count > 0)
                 .sort(([a], [b]) => a.localeCompare(b))
-                .map(([flavor, count]) => `${flavor}: ${count}`)
-                .join('\n');
+                .map(([flavor, count]) => `${flavor}: ${count}`);
+                
+            const gastroItems = Object.entries(flavors.gastro)
+                .filter(([_, count]) => count > 0)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([flavor, count]) => `${flavor}: ${count}`);
+
+            if (normalItems.length > 0) {
+                exportData += 'Normal:\n' + normalItems.join('\n');
+            }
+            
+            if (gastroItems.length > 0) {
+                if (exportData) exportData += '\n\n';
+                exportData += 'Gastro:\n' + gastroItems.join('\n');
+            }
 
             if (!exportData) {
                 alert('No items with count > 0 to export');
